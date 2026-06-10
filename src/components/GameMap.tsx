@@ -3,6 +3,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { useGameStore, selectCurrentOrder } from '../store/gameStore';
 import { GRID_SIZE } from '../game/constants';
 import { getRainParticleCount, isRaining } from '../game/WeatherSystem';
+import { getVehicleStats } from '../game/VehicleSystem';
 
 interface RainDrop {
   x: number;
@@ -392,7 +393,8 @@ export default function GameMap() {
 
       ctx.restore();
 
-      if (vehicle.battery < 20) {
+      const mapStats = getVehicleStats(vehicle);
+      if (vehicle.battery / mapStats.effectiveMaxBattery < 0.2) {
         ctx.strokeStyle = 'rgba(255, 71, 87, 0.5)';
         ctx.lineWidth = 3;
         ctx.beginPath();

@@ -16,6 +16,8 @@ export default function StatusPanel() {
   const isResting = useGameStore((state) => state.isResting);
 
   const stats = getVehicleStats(vehicle);
+  const batteryPercent = Math.min(100, (vehicle.battery / stats.effectiveMaxBattery) * 100);
+  const durabilityPercent = Math.min(100, (vehicle.durability / stats.effectiveMaxDurability) * 100);
   const avgRating = calculateTotalRating(incomeRecords);
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -53,15 +55,15 @@ export default function StatusPanel() {
               <Zap size={14} className="text-game-neon" />
               <span className="font-retro text-sm">电量</span>
             </div>
-            <span className={`font-retro text-sm ${vehicle.battery < 20 ? 'text-game-danger animate-pulse' : ''}`}>
-              {Math.floor(vehicle.battery)}%
+            <span className={`font-retro text-sm ${batteryPercent < 20 ? 'text-game-danger animate-pulse' : ''}`}>
+              {Math.floor(vehicle.battery)}/{stats.effectiveMaxBattery}
               {isCharging && <span className="text-game-success ml-1">⚡充电中</span>}
             </span>
           </div>
           <div className="progress-bar">
             <div
-              className={`progress-bar-fill ${getProgressClass(vehicle.battery)}`}
-              style={{ width: `${vehicle.battery}%` }}
+              className={`progress-bar-fill ${getProgressClass(batteryPercent)}`}
+              style={{ width: `${batteryPercent}%` }}
             />
           </div>
         </div>
@@ -91,15 +93,15 @@ export default function StatusPanel() {
               <Wrench size={14} className="text-game-streetLight" />
               <span className="font-retro text-sm">耐久度</span>
             </div>
-            <span className={`font-retro text-sm ${vehicle.durability < 20 ? 'text-game-danger animate-pulse' : ''}`}>
-              {Math.floor(vehicle.durability)}%
+            <span className={`font-retro text-sm ${durabilityPercent < 20 ? 'text-game-danger animate-pulse' : ''}`}>
+              {Math.floor(vehicle.durability)}/{stats.effectiveMaxDurability}
               {isRepairing && <span className="text-game-success ml-1">🔧维修中</span>}
             </span>
           </div>
           <div className="progress-bar">
             <div
-              className={`progress-bar-fill ${getProgressClass(vehicle.durability)}`}
-              style={{ width: `${vehicle.durability}%`, background: 'linear-gradient(90deg, #ffcc4d 0%, #ffda79 100%)' }}
+              className={`progress-bar-fill ${getProgressClass(durabilityPercent)}`}
+              style={{ width: `${durabilityPercent}%`, background: 'linear-gradient(90deg, #ffcc4d 0%, #ffda79 100%)' }}
             />
           </div>
         </div>

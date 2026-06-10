@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { GameState, GameAction, GameSave, Order, PartCategory } from '../game/types';
+import type { GameState, GameAction, GameSave, Order, PartCategory, VehicleState, MapData } from '../game/types';
 import { generateMapData, findPath } from '../game/mapData';
 import { generateOrder, updateOrderDeadlines, isAtLocation, canAcceptOrder } from '../game/OrderSystem';
 import { updateWeather, createInitialWeather } from '../game/WeatherSystem';
@@ -274,7 +274,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ...newState.player,
           money: Math.max(0, newState.player.money - cost),
         };
-        if (vehicle.battery >= vehicle.maxBattery) {
+        const chargeStats = getVehicleStats(vehicle);
+        if (vehicle.battery >= chargeStats.effectiveMaxBattery) {
           newState.isCharging = false;
         }
       }
@@ -286,7 +287,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
           ...newState.player,
           money: Math.max(0, newState.player.money - cost),
         };
-        if (vehicle.durability >= vehicle.maxDurability) {
+        const repairStats = getVehicleStats(vehicle);
+        if (vehicle.durability >= repairStats.effectiveMaxDurability) {
           newState.isRepairing = false;
         }
       }
@@ -325,7 +327,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
         newState.plannedPath = [];
       }
 
-      if (newState.player.money < 0 && newState.player.stamina < 10 && newState.vehicle.battery < 10) {
+      const gameOverStats = getVehicleStats(newState.vehicle);
+      if (newState.player.money < 0 && newState.player.stamina < 10 && newState.vehicle.battery / gameOverStats.effectiveMaxBattery < 0.1) {
         newState.isGameOver = true;
       }
 
@@ -365,15 +368,33 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'LOAD_GAME': {
       const save = action.save;
+      const base = createInitialState();
+      const savedVehicle = save.vehicle as unknown as Record<string, unknown>;
+      const savedMap = save.map as unknown as Record<string, unknown>;
+      const migratedVehicle: VehicleState = {
+        ...base.vehicle,
+        ...save.vehicle,
+        equippedParts: savedVehicle.equippedParts
+          ? (savedVehicle.equippedParts as VehicleState['equippedParts'])
+          : base.vehicle.equippedParts,
+      };
+      const migratedMap: MapData = {
+        ...base.map,
+        ...save.map,
+        upgradeShops: savedMap.upgradeShops
+          ? (savedMap.upgradeShops as MapData['upgradeShops'])
+          : base.map.upgradeShops,
+      };
       return {
-        ...createInitialState(),
+        ...base,
         player: save.player,
-        vehicle: save.vehicle,
+        vehicle: migratedVehicle,
         weather: save.weather,
         orders: save.orders,
         incomeRecords: save.incomeRecords,
         gameTime: save.gameTime,
-        map: save.map,
+        map: migratedMap,
+        showUpgradeShop: false,
       };
     }
 
