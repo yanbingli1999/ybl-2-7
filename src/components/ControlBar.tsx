@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useGameStore, selectIsNearCharging, selectIsNearRepair } from '../store/gameStore';
-import { Zap, Wrench, Coffee, Pause, Play, Save, FolderOpen, RotateCcw, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
+import { useGameStore, selectIsNearCharging, selectIsNearRepair, selectIsNearUpgrade } from '../store/gameStore';
+import { Zap, Wrench, Coffee, Pause, Play, Save, FolderOpen, RotateCcw, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Settings } from 'lucide-react';
 
 export default function ControlBar({ onOpenSave, setKey }: { onOpenSave: () => void; setKey: (key: string, pressed: boolean) => void }) {
   const dispatch = useGameStore((state) => state.dispatch);
@@ -13,6 +13,7 @@ export default function ControlBar({ onOpenSave, setKey }: { onOpenSave: () => v
 
   const nearCharging = useGameStore(selectIsNearCharging);
   const nearRepair = useGameStore(selectIsNearRepair);
+  const nearUpgrade = useGameStore(selectIsNearUpgrade);
 
   const [activeKeys, setActiveKeys] = useState<Set<string>>(new Set());
 
@@ -48,6 +49,10 @@ export default function ControlBar({ onOpenSave, setKey }: { onOpenSave: () => v
     } else {
       dispatch({ type: 'START_RESTING' });
     }
+  };
+
+  const handleUpgrade = () => {
+    dispatch({ type: 'OPEN_UPGRADE_SHOP' });
   };
 
   const handleSave = () => {
@@ -168,6 +173,17 @@ export default function ControlBar({ onOpenSave, setKey }: { onOpenSave: () => v
             <Coffee size={14} />
             {isResting ? '停止休息' : '休息'}
           </button>
+
+          <button
+            onClick={handleUpgrade}
+            disabled={!nearUpgrade}
+            className={`pixel-btn text-xs flex items-center gap-1 ${
+              !nearUpgrade ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            <Settings size={14} />
+            改装
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -213,6 +229,11 @@ export default function ControlBar({ onOpenSave, setKey }: { onOpenSave: () => v
       {nearRepair && !isRepairing && (
         <div className="mt-2 text-center text-game-streetLight font-retro text-xs animate-pulse">
           🔧 你在修车铺附近，可以修车
+        </div>
+      )}
+      {nearUpgrade && (
+        <div className="mt-2 text-center text-purple-400 font-retro text-xs animate-pulse">
+          ⚙️ 你在改装店附近，可以升级车辆
         </div>
       )}
       {isResting && (

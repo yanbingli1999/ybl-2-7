@@ -54,6 +54,7 @@ export default function GameMap() {
       drawBuildings(ctx);
       drawChargingStations(ctx);
       drawRepairShops(ctx);
+      drawUpgradeShops(ctx);
       drawOrderLocations(ctx);
       drawPlannedPath(ctx);
       drawVehicle(ctx);
@@ -178,6 +179,37 @@ export default function GameMap() {
         ctx.fillText('🔧', shop.x, shop.y);
 
         ctx.fillStyle = '#ffcc4d';
+        ctx.font = '10px VT323';
+        ctx.fillText(shop.name, shop.x, shop.y + 25);
+      });
+    };
+
+    const drawUpgradeShops = (ctx: CanvasRenderingContext2D) => {
+      map.upgradeShops.forEach((shop) => {
+        const pulse = Math.sin(timeRef.current * 2) * 0.5 + 0.5;
+        ctx.beginPath();
+        ctx.arc(shop.x, shop.y, GRID_SIZE / 2 + 8 + pulse * 3, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(186, 85, 211, 0.2)';
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(shop.x, shop.y, GRID_SIZE / 2 + 5, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(186, 85, 211, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = '#ba55d3';
+        ctx.fillRect(shop.x - 12, shop.y - 12, 24, 24);
+
+        ctx.fillStyle = '#0a1628';
+        ctx.font = 'bold 14px VT323';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⚙️', shop.x, shop.y);
+
+        ctx.fillStyle = '#ba55d3';
         ctx.font = '10px VT323';
         ctx.fillText(shop.name, shop.x, shop.y + 25);
       });

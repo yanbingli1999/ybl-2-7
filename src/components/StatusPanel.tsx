@@ -1,8 +1,9 @@
 import { useShallow } from 'zustand/react/shallow';
 import { useGameStore } from '../store/gameStore';
-import { WEATHER_NAMES, WEATHER_COLORS } from '../game/constants';
+import { WEATHER_NAMES, WEATHER_COLORS, PART_CATEGORY_NAMES, PART_CATEGORY_ICONS } from '../game/constants';
 import { calculateTotalRating, formatMoney } from '../game/EconomySystem';
-import { Zap, Heart, Wrench, DollarSign, Cloud, Clock, Star } from 'lucide-react';
+import { getVehicleStats, getPartById } from '../game/VehicleSystem';
+import { Zap, Heart, Wrench, DollarSign, Cloud, Clock, Star, Gauge, Cog } from 'lucide-react';
 
 export default function StatusPanel() {
   const player = useGameStore((state) => state.player);
@@ -14,6 +15,7 @@ export default function StatusPanel() {
   const isRepairing = useGameStore((state) => state.isRepairing);
   const isResting = useGameStore((state) => state.isResting);
 
+  const stats = getVehicleStats(vehicle);
   const avgRating = calculateTotalRating(incomeRecords);
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -130,6 +132,44 @@ export default function StatusPanel() {
           <span className="font-retro text-sm text-gray-400">完成订单</span>
           <span className="font-retro text-sm text-game-success">{player.completedOrders}</span>
         </div>
+      </div>
+
+      <div className="border-t border-game-neon/30 pt-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Gauge size={14} className="text-game-neon" />
+            <span className="font-retro text-sm text-gray-400">实际速度</span>
+          </div>
+          <span className="font-retro text-sm text-game-neon">{stats.effectiveSpeed.toFixed(0)}</span>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Cog size={14} className="text-gray-400" />
+            <span className="font-retro text-sm text-gray-400">总重量</span>
+          </div>
+          <span className="font-retro text-sm text-gray-300">{stats.effects.totalWeight}kg</span>
+        </div>
+      </div>
+
+      <div className="border-t border-game-neon/30 pt-3 space-y-1.5">
+        <h4 className="font-pixel text-xs text-game-streetLight flex items-center gap-1">
+          <Wrench size={12} /> 已装备配件
+        </h4>
+        {(['tire', 'motor', 'battery', 'frame'] as const).map((cat) => {
+          const partId = vehicle.equippedParts[cat];
+          const part = partId ? getPartById(partId) : null;
+          return (
+            <div key={cat} className="flex items-center justify-between font-retro text-xs">
+              <span className="text-gray-500 flex items-center gap-1">
+                {PART_CATEGORY_ICONS[cat]} {PART_CATEGORY_NAMES[cat]}
+              </span>
+              <span className={part && part.tier > 1 ? 'text-game-neon' : 'text-gray-400'}>
+                {part ? part.name : '无'}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       {(isCharging || isRepairing || isResting) && (

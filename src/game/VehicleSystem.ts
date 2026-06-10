@@ -1,4 +1,4 @@
-import { VehicleState, Position, WeatherState } from './types';
+import { VehicleState, Position, WeatherState, EquippedParts, VehiclePart, PartCategory } from './types';
 import {
   BASE_SPEED,
   BATTERY_DRAIN_RATE,
@@ -11,6 +11,7 @@ import {
   REPAIR_COST,
   GRID_SIZE,
   PLAYER_START,
+  VEHICLE_PARTS,
 } from './constants';
 import { isOnRoad } from './mapData';
 
@@ -51,6 +52,82 @@ export function createInitialVehicle(): VehicleState {
     baseSpeed: BASE_SPEED,
     position: { ...PLAYER_START },
     direction: 'down',
+    equippedParts: {
+      tire: 'tire-1',
+      motor: 'motor-1',
+      battery: 'battery-1',
+      frame: 'frame-1',
+    },
+  };
+}
+
+export function getPartById(partId: string): VehiclePart | undefined {
+  return VEHICLE_PARTS.find((p) => p.id === partId);
+}
+
+export function getPartsByCategory(category: PartCategory): VehiclePart[] {
+  return VEHICLE_PARTS.filter((p) => p.category === category);
+}
+
+export function calculatePartEffects(equippedParts: EquippedParts): {
+  totalSpeedBonus: number;
+  totalBatteryDrainModifier: number;
+  totalDurabilityDrainModifier: number;
+  totalMaxBatteryBonus: number;
+  totalMaxDurabilityBonus: number;
+  totalWeight: number;
+} {
+  let totalSpeedBonus = 0;
+  let totalBatteryDrainModifier = 1;
+  let totalDurabilityDrainModifier = 1;
+  let totalMaxBatteryBonus = 0;
+  let totalMaxDurabilityBonus = 0;
+  let totalWeight = 0;
+
+  const partIds = [equippedParts.tire, equippedParts.motor, equippedParts.battery, equippedParts.frame];
+  for (const partId of partIds) {
+    if (partId) {
+      const part = getPartById(partId);
+      if (part) {
+        totalSpeedBonus += part.speedBonus;
+        totalBatteryDrainModifier *= part.batteryDrainModifier;
+        totalDurabilityDrainModifier *= part.durabilityDrainModifier;
+        totalMaxBatteryBonus += part.maxBatteryBonus;
+        totalMaxDurabilityBonus += part.maxDurabilityBonus;
+        totalWeight += part.weight;
+      }
+    }
+  }
+
+  const weightPenalty = Math.max(0, (totalWeight - 70) * 0.1);
+  totalSpeedBonus -= weightPenalty;
+
+  return {
+    totalSpeedBonus,
+    totalBatteryDrainModifier,
+    totalDurabilityDrainModifier,
+    totalMaxBatteryBonus,
+    totalMaxDurabilityBonus,
+    totalWeight,
+  };
+}
+
+export function getVehicleStats(vehicle: VehicleState): {
+  effectiveSpeed: number;
+  effectiveMaxBattery: number;
+  effectiveMaxDurability: number;
+  effectiveBatteryDrainRate: number;
+  effectiveDurabilityDrainRate: number;
+  effects: ReturnType<typeof calculatePartEffects>;
+} {
+  const effects = calculatePartEffects(vehicle.equippedParts);
+  return {
+    effectiveSpeed: vehicle.baseSpeed + effects.totalSpeedBonus,
+    effectiveMaxBattery: vehicle.maxBattery + effects.totalMaxBatteryBonus,
+    effectiveMaxDurability: vehicle.maxDurability + effects.totalMaxDurabilityBonus,
+    effectiveBatteryDrainRate: BATTERY_DRAIN_RATE * effects.totalBatteryDrainModifier,
+    effectiveDurabilityDrainRate: DURABILITY_DRAIN_RATE * effects.totalDurabilityDrainModifier,
+    effects,
   };
 }
 
@@ -62,6 +139,7 @@ export function moveVehicle(
   roads: Array<{ id?: string; type?: string; x: number; y: number; width: number; height: number }>,
   stamina: number
 ): { vehicle: VehicleState; moved: boolean; staminaDrain: number } {
+  const stats = getVehicleStats(vehicle);
   if (vehicle.battery <= 0 || stamina <= 0) {
     return { vehicle: { ...vehicle, speed: 0 }, moved: false, staminaDrain: 0 };
   }
@@ -79,9 +157,9 @@ export function moveVehicle(
     return { vehicle: { ...vehicle, speed: 0, direction }, moved: false, staminaDrain: 0 };
   }
 
-  const durabilityModifier = vehicle.durability / 100;
+  const durabilityModifier = vehicle.durability / stats.effectiveMaxDurability;
   const staminaModifier = stamina >= 30 ? 1.0 : stamina / 30;
-  const effectiveSpeed = vehicle.baseSpeed * weather.speedModifier * durabilityModifier * staminaModifier;
+  const effectiveSpeed = stats.effectiveSpeed * weather.speedModifier * durabilityModifier * staminaModifier;
 
   let newX = vehicle.position.x;
   let newY = vehicle.position.y;
@@ -120,8 +198,8 @@ export function moveVehicle(
     snapX = newRoads.centerX;
   }
 
-  const batteryDrain = BATTERY_DRAIN_RATE * deltaTime * (1 + weather.intensity / 100);
-  const durabilityDrain = DURABILITY_DRAIN_RATE * deltaTime;
+  const batteryDrain = stats.effectiveBatteryDrainRate * deltaTime * (1 + weather.intensity / 100);
+  const durabilityDrain = stats.effectiveDurabilityDrainRate * deltaTime;
   const staminaDrain = STAMINA_DRAIN_RATE * deltaTime * (1 + weather.intensity / 200);
 
   return {
@@ -142,14 +220,15 @@ export function chargeVehicle(
   vehicle: VehicleState,
   deltaTime: number
 ): { vehicle: VehicleState; cost: number } {
+  const stats = getVehicleStats(vehicle);
   const chargeAmount = CHARGE_RATE * deltaTime;
-  const actualCharge = Math.min(chargeAmount, vehicle.maxBattery - vehicle.battery);
+  const actualCharge = Math.min(chargeAmount, stats.effectiveMaxBattery - vehicle.battery);
   const cost = actualCharge * CHARGE_COST;
 
   return {
     vehicle: {
       ...vehicle,
-      battery: Math.min(vehicle.maxBattery, vehicle.battery + actualCharge),
+      battery: Math.min(stats.effectiveMaxBattery, vehicle.battery + actualCharge),
       speed: 0,
     },
     cost,
@@ -160,14 +239,15 @@ export function repairVehicle(
   vehicle: VehicleState,
   deltaTime: number
 ): { vehicle: VehicleState; cost: number } {
+  const stats = getVehicleStats(vehicle);
   const repairAmount = REPAIR_RATE * deltaTime;
-  const actualRepair = Math.min(repairAmount, vehicle.maxDurability - vehicle.durability);
+  const actualRepair = Math.min(repairAmount, stats.effectiveMaxDurability - vehicle.durability);
   const cost = actualRepair * REPAIR_COST;
 
   return {
     vehicle: {
       ...vehicle,
-      durability: Math.min(vehicle.maxDurability, vehicle.durability + actualRepair),
+      durability: Math.min(stats.effectiveMaxDurability, vehicle.durability + actualRepair),
       speed: 0,
     },
     cost,
@@ -199,6 +279,15 @@ export function isNearChargingStation(
 }
 
 export function isNearRepairShop(
+  position: Position,
+  shops: Array<{ x: number; y: number }>
+): boolean {
+  return shops.some(
+    (s) => Math.hypot(position.x - s.x, position.y - s.y) < GRID_SIZE * 1.5
+  );
+}
+
+export function isNearUpgradeShop(
   position: Position,
   shops: Array<{ x: number; y: number }>
 ): boolean {

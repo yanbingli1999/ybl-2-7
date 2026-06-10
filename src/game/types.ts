@@ -3,6 +3,30 @@ export interface Position {
   y: number;
 }
 
+export type PartCategory = 'tire' | 'motor' | 'battery' | 'frame';
+
+export interface VehiclePart {
+  id: string;
+  name: string;
+  category: PartCategory;
+  tier: number;
+  price: number;
+  weight: number;
+  speedBonus: number;
+  batteryDrainModifier: number;
+  durabilityDrainModifier: number;
+  maxBatteryBonus: number;
+  maxDurabilityBonus: number;
+  description: string;
+}
+
+export interface EquippedParts {
+  tire: string | null;
+  motor: string | null;
+  battery: string | null;
+  frame: string | null;
+}
+
 export interface PlayerState {
   id: string;
   name: string;
@@ -25,6 +49,7 @@ export interface VehicleState {
   baseSpeed: number;
   position: Position;
   direction: 'up' | 'down' | 'left' | 'right';
+  equippedParts: EquippedParts;
 }
 
 export type OrderStatus = 'available' | 'accepted' | 'pickedup' | 'delivering' | 'completed' | 'failed';
@@ -74,7 +99,7 @@ export interface Building {
 export interface LocationPoint {
   id: string;
   name: string;
-  type: 'charging' | 'repair' | 'pickup' | 'delivery';
+  type: 'charging' | 'repair' | 'pickup' | 'delivery' | 'upgrade';
   x: number;
   y: number;
 }
@@ -87,6 +112,7 @@ export interface MapData {
   buildings: Building[];
   chargingStations: LocationPoint[];
   repairShops: LocationPoint[];
+  upgradeShops: LocationPoint[];
 }
 
 export interface IncomeRecord {
@@ -117,6 +143,7 @@ export interface GameState {
   isCharging: boolean;
   isRepairing: boolean;
   isResting: boolean;
+  showUpgradeShop: boolean;
 }
 
 export interface GameSave {
@@ -150,4 +177,7 @@ export type GameAction =
   | { type: 'CLEAR_PATH' }
   | { type: 'NEW_GAME' }
   | { type: 'LOAD_GAME'; save: GameSave }
-  | { type: 'GAME_OVER' };
+  | { type: 'GAME_OVER' }
+  | { type: 'OPEN_UPGRADE_SHOP' }
+  | { type: 'CLOSE_UPGRADE_SHOP' }
+  | { type: 'BUY_PART'; partId: string; category: PartCategory };

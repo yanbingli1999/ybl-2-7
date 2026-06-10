@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { GameState, GameAction, GameSave, Order } from '../game/types';
+import type { GameState, GameAction, GameSave, Order, PartCategory } from '../game/types';
 import { generateMapData, findPath } from '../game/mapData';
 import { generateOrder, updateOrderDeadlines, isAtLocation, canAcceptOrder } from '../game/OrderSystem';
 import { updateWeather, createInitialWeather } from '../game/WeatherSystem';
@@ -11,6 +11,9 @@ import {
   restPlayer,
   isNearChargingStation,
   isNearRepairShop,
+  isNearUpgradeShop,
+  getPartById,
+  getVehicleStats,
 } from '../game/VehicleSystem';
 import { calculateSettlement } from '../game/EconomySystem';
 import { saveGame, loadGame } from '../game/Storage';
@@ -48,6 +51,7 @@ export function createInitialState(): GameState {
     isCharging: false,
     isRepairing: false,
     isResting: false,
+    showUpgradeShop: false,
   };
 }
 
@@ -189,6 +193,51 @@ function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'STOP_RESTING': {
       return { ...state, isResting: false };
+    }
+
+    case 'OPEN_UPGRADE_SHOP': {
+      if (!isNearUpgradeShop(state.player.position, state.map.upgradeShops)) return state;
+      return { ...state, showUpgradeShop: true, isPaused: true, isCharging: false, isRepairing: false, isResting: false };
+    }
+
+    case 'CLOSE_UPGRADE_SHOP': {
+      return { ...state, showUpgradeShop: false, isPaused: false };
+    }
+
+    case 'BUY_PART': {
+      const part = getPartById(action.partId);
+      if (!part) return state;
+      if (state.player.money < part.price) return state;
+      if (!isNearUpgradeShop(state.player.position, state.map.upgradeShops)) return state;
+
+      const category = action.category;
+      const newEquippedParts = {
+        ...state.vehicle.equippedParts,
+        [category]: part.id,
+      };
+
+      const newVehicle = {
+        ...state.vehicle,
+        equippedParts: newEquippedParts,
+      };
+
+      const newStats = getVehicleStats(newVehicle);
+      const oldStats = getVehicleStats(state.vehicle);
+
+      const batteryRatio = oldStats.effectiveMaxBattery > 0 ? state.vehicle.battery / oldStats.effectiveMaxBattery : 1;
+      const durabilityRatio = oldStats.effectiveMaxDurability > 0 ? state.vehicle.durability / oldStats.effectiveMaxDurability : 1;
+
+      newVehicle.battery = Math.min(newStats.effectiveMaxBattery, newStats.effectiveMaxBattery * batteryRatio);
+      newVehicle.durability = Math.min(newStats.effectiveMaxDurability, newStats.effectiveMaxDurability * durabilityRatio);
+
+      return {
+        ...state,
+        player: {
+          ...state.player,
+          money: state.player.money - part.price,
+        },
+        vehicle: newVehicle,
+      };
     }
 
     case 'GENERATE_ORDERS': {
@@ -409,6 +458,10 @@ export const selectIsNearRepair = (state: GameState): boolean => {
   return isNearRepairShop(state.player.position, state.map.repairShops);
 };
 
+export const selectIsNearUpgrade = (state: GameState): boolean => {
+  return isNearUpgradeShop(state.player.position, state.map.upgradeShops);
+};
+
 export function useCurrentOrder(): Order | null {
   return useGameStore(selectCurrentOrder);
 }
@@ -423,4 +476,8 @@ export function useIsNearCharging(): boolean {
 
 export function useIsNearRepair(): boolean {
   return useGameStore(selectIsNearRepair);
+}
+
+export function useIsNearUpgrade(): boolean {
+  return useGameStore(selectIsNearUpgrade);
 }

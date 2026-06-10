@@ -6,6 +6,7 @@ export function generateMapData(): MapData {
   const buildings = generateBuildings();
   const chargingStations = generateChargingStations();
   const repairShops = generateRepairShops();
+  const upgradeShops = generateUpgradeShops();
 
   return {
     width: COLS * GRID_SIZE,
@@ -15,6 +16,7 @@ export function generateMapData(): MapData {
     buildings,
     chargingStations,
     repairShops,
+    upgradeShops,
   };
 }
 
@@ -144,6 +146,13 @@ function generateRepairShops(): MapData['repairShops'] {
     { id: 'rs-1', name: '修车铺 A', type: 'repair', x: GRID_SIZE * 8, y: GRID_SIZE * 9 },
     { id: 'rs-2', name: '修车铺 B', type: 'repair', x: GRID_SIZE * 20, y: GRID_SIZE * 3 },
     { id: 'rs-3', name: '修车铺 C', type: 'repair', x: GRID_SIZE * 28, y: GRID_SIZE * 12 },
+  ];
+}
+
+function generateUpgradeShops(): MapData['upgradeShops'] {
+  return [
+    { id: 'us-1', name: '极速改装店', type: 'upgrade', x: GRID_SIZE * 12, y: GRID_SIZE * 6 },
+    { id: 'us-2', name: '动力工坊', type: 'upgrade', x: GRID_SIZE * 24, y: GRID_SIZE * 12 },
   ];
 }
 

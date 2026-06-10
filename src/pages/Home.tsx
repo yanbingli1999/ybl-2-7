@@ -7,6 +7,7 @@ import OrderPanel from '../components/OrderPanel';
 import ControlBar from '../components/ControlBar';
 import SettlementModal from '../components/SettlementModal';
 import SaveLoadModal from '../components/SaveLoadModal';
+import UpgradeShop from '../components/UpgradeShop';
 import { hasSavedGame } from '../game/Storage';
 import { Truck, HelpCircle, X } from 'lucide-react';
 
@@ -64,6 +65,7 @@ export default function Home() {
 
       <SettlementModal />
       <SaveLoadModal isOpen={showSaveModal} onClose={() => setShowSaveModal(false)} />
+      <UpgradeShop />
 
       {showStartScreen && (
         <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50">
